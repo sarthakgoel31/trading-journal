@@ -1,0 +1,18 @@
+# Data (contains personal biometrics)
+data/
+*.db
+*.sqlite
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store

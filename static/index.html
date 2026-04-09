@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand">Trading <span>Journal</span></div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-view="session">Session</button>
+            <button class="nav-tab" data-view="history">History</button>
+            <button class="nav-tab" data-view="analysis">Analysis</button>
+            <button class="nav-tab" data-view="setup">Setup</button>
+        </div>
+    </nav>
+
+    <div class="container">
+
+        <!-- ==================== SESSION VIEW ==================== -->
+        <div id="view-session" class="view active">
+
+            <!-- Pre-session form (shown when no active session) -->
+            <div id="pre-session" class="card">
+                <div class="card-title">Pre-Session Check-in</div>
+                <div class="pre-session-grid">
+                    <div class="form-group">
+                        <label class="form-label">Sleep Hours</label>
+                        <input type="number" id="sleep-hours" class="form-input" placeholder="Hours" step="0.5" min="0" max="14">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Caffeine (cups)</label>
+                        <input type="number" id="caffeine" class="form-input" placeholder="0" min="0" max="10" value="0">
+                    </div>
+                    <div class="form-group" style="grid-column: 1/-1">
+                        <label class="form-label">Current Mood</label>
+                        <div class="chip-group" id="mood-chips">
+                            <button class="chip" data-value="calm">Calm</button>
+                            <button class="chip" data-value="focused">Focused</button>
+                            <button class="chip" data-value="energized">Energized</button>
+                            <button class="chip" data-value="neutral">Neutral</button>
+                            <button class="chip" data-value="tired">Tired</button>
+                            <button class="chip" data-value="anxious">Anxious</button>
+                            <button class="chip" data-value="frustrated">Frustrated</button>
+                            <button class="chip" data-value="fomo">FOMO</button>
+                            <button class="chip" data-value="revenge">Revenge</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Exercise today?</label>
+                        <div class="chip-group" id="exercise-chips">
+                            <button class="chip selected" data-value="0">No</button>
+                            <button class="chip" data-value="1">Yes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toggle button -->
+            <div class="card">
+                <div class="toggle-area">
+                    <button id="toggle-btn" class="toggle-btn" onclick="toggleSession()">
+                        <span class="icon">&#9654;</span>
+                        <span id="toggle-label">START</span>
+                    </button>
+                    <div id="session-timer" class="session-timer hidden">00:00:00</div>
+                    <div id="session-meta" class="session-meta hidden"></div>
+                    <div id="readiness-display" class="hidden"></div>
+                </div>
+            </div>
+
+            <!-- During session: watch is recording passively -->
+            <div id="health-recording" class="card hidden">
+                <div style="display:flex; align-items:center; gap:12px; padding:8px 0">
+                    <div style="width:10px; height:10px; border-radius:50%; background:var(--red); animation: pulse-ring 2s infinite"></div>
+                    <span style="font-size:14px; color:var(--text-dim)">Apple Watch is recording. Just trade. Data syncs when you stop.</span>
+                </div>
+            </div>
+
+            <!-- After session: sync once to pull all data -->
+            <div id="health-card" class="card hidden">
+                <div class="flex-between mb-12">
+                    <div class="card-title" style="margin:0">Biometrics</div>
+                    <button id="sync-post-btn" class="btn btn-sm btn-primary" onclick="syncHealth()">Sync Watch Data</button>
+                </div>
+                <div id="health-not-synced" style="text-align:center; padding:16px; color:var(--text-dim); font-size:13px">
+                    Run "Trading Post-Sync" shortcut on iPhone to pull your session's heart rate data.
+                </div>
+                <div id="health-stats" class="stats-grid hidden">
+                    <div class="stat-item">
+                        <div class="stat-value" id="hr-avg">--</div>
+                        <div class="stat-label">Avg HR</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="hr-max">--</div>
+                        <div class="stat-label">Max HR</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="hrv-avg">--</div>
+                        <div class="stat-label">HRV (ms)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stress-level">--</div>
+                        <div class="stat-label">Stress</div>
+                    </div>
+                </div>
+                <div id="hr-chart-container" class="chart-container mt-16 hidden">
+                    <div class="chart-title">Heart Rate During Session</div>
+                    <canvas id="hr-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Post-session journal (shown after stop) -->
+            <div id="post-session" class="card hidden">
+                <div class="card-title">Session Journal</div>
+
+                <!-- Did you trade? -->
+                <div id="trade-question" class="text-center" style="padding: 20px 0">
+                    <p style="font-size: 16px; margin-bottom: 16px; color: var(--text-bright)">Did you take any trades?</p>
+                    <div class="flex" style="justify-content: center; gap: 12px">
+                        <button class="btn btn-primary" onclick="showTradeForm()">Yes</button>
+                        <button class="btn btn-ghost" onclick="skipTrades()">No, just watched</button>
+                    </div>
+                </div>
+
+                <!-- Trade entry form -->
+                <div id="trade-form-area" class="hidden">
+                    <div id="trades-list"></div>
+
+                    <div id="trade-form" class="card" style="background: var(--bg); border: 1px dashed var(--border)">
+                        <div class="pre-session-grid">
+                            <div class="form-group">
+                                <label class="form-label">Entry Time</label>
+                                <input type="time" id="trade-entry-time" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Exit Time</label>
+                                <input type="time" id="trade-exit-time" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Direction</label>
+                                <div class="chip-group" id="direction-chips">
+                                    <button class="chip" data-value="long">Long</button>
+                                    <button class="chip" data-value="short">Short</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Outcome</label>
+                                <div class="chip-group" id="outcome-chips">
+                                    <button class="chip" data-value="win">Win</button>
+                                    <button class="chip" data-value="loss">Loss</button>
+                                    <button class="chip" data-value="breakeven">BE</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Entry Price</label>
+                                <input type="number" id="trade-entry-price" class="form-input" step="0.00001" placeholder="1.08500">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Exit Price</label>
+                                <input type="number" id="trade-exit-price" class="form-input" step="0.00001" placeholder="1.08600">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">P&L (pips)</label>
+                                <input type="number" id="trade-pnl" class="form-input" step="0.1" placeholder="+10 or -5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Per Plan?</label>
+                                <div class="chip-group" id="plan-chips">
+                                    <button class="chip selected" data-value="1">Yes</button>
+                                    <button class="chip" data-value="0">No, broke rules</button>
+                                </div>
+                            </div>
+                            <div class="form-group" id="rules-broken-group" class="hidden" style="grid-column: 1/-1; display: none">
+                                <label class="form-label">Which rules did you break?</label>
+                                <input type="text" id="trade-rules-broken" class="form-input" placeholder="e.g., Entered without confirmation, moved stop loss">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Confidence (1-5)</label>
+                                <div class="confidence-row" id="confidence-dots">
+                                    <div class="confidence-dot" data-value="1">1</div>
+                                    <div class="confidence-dot" data-value="2">2</div>
+                                    <div class="confidence-dot selected" data-value="3">3</div>
+                                    <div class="confidence-dot" data-value="4">4</div>
+                                    <div class="confidence-dot" data-value="5">5</div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Emotion Before Entry</label>
+                                <div class="chip-group" id="emotion-before-chips">
+                                    <button class="chip" data-value="calm">Calm</button>
+                                    <button class="chip" data-value="confident">Confident</button>
+                                    <button class="chip" data-value="anxious">Anxious</button>
+                                    <button class="chip" data-value="fomo">FOMO</button>
+                                    <button class="chip" data-value="revenge">Revenge</button>
+                                    <button class="chip" data-value="bored">Bored</button>
+                                    <button class="chip" data-value="greedy">Greedy</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Emotion During Trade</label>
+                                <div class="chip-group" id="emotion-during-chips">
+                                    <button class="chip" data-value="calm">Calm</button>
+                                    <button class="chip" data-value="anxious">Anxious</button>
+                                    <button class="chip" data-value="hopeful">Hopeful</button>
+                                    <button class="chip" data-value="fearful">Fearful</button>
+                                    <button class="chip" data-value="frustrated">Frustrated</button>
+                                    <button class="chip" data-value="numb">Numb</button>
+                                </div>
+                            </div>
+                            <div class="form-group" style="grid-column: 1/-1">
+                                <label class="form-label">Trade Notes</label>
+                                <textarea id="trade-notes" class="form-textarea" placeholder="What was the setup? What did you see?"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex mt-16" style="gap: 12px">
+                            <button class="btn btn-primary" onclick="saveTrade()">Save Trade</button>
+                            <button class="btn btn-ghost" onclick="doneAddingTrades()">Done Adding Trades</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session wrap-up -->
+                <div id="session-wrapup" class="hidden">
+                    <div class="divider"></div>
+                    <div class="card-title">Session Wrap-Up</div>
+                    <div class="form-group mb-12">
+                        <label class="form-label">Session Rating</label>
+                        <div class="star-rating" id="session-stars">
+                            <span class="star" data-value="1">&#9733;</span>
+                            <span class="star" data-value="2">&#9733;</span>
+                            <span class="star" data-value="3">&#9733;</span>
+                            <span class="star" data-value="4">&#9733;</span>
+                            <span class="star" data-value="5">&#9733;</span>
+                        </div>
+                    </div>
+                    <div class="form-group mb-12">
+                        <label class="form-label">Key Lesson from Today</label>
+                        <input type="text" id="session-lesson" class="form-input" placeholder="One sentence — what did you learn?">
+                    </div>
+                    <div class="form-group mb-12">
+                        <label class="form-label">Session Notes</label>
+                        <textarea id="session-notes" class="form-textarea" placeholder="Market context, observations, what went well/wrong..."></textarea>
+                    </div>
+                    <button class="btn btn-success btn-full mt-16" onclick="completeSession()">Complete Session</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== HISTORY VIEW ==================== -->
+        <div id="view-history" class="view">
+            <div class="card">
+                <div class="card-title">Session History</div>
+                <div id="history-list"></div>
+                <div id="history-empty" class="text-center hidden" style="padding: 40px; color: var(--text-dim)">
+                    No completed sessions yet. Start your first trading session!
+                </div>
+            </div>
+            <!-- Detail panel -->
+            <div id="history-detail" class="card hidden"></div>
+        </div>
+
+        <!-- ==================== ANALYSIS VIEW ==================== -->
+        <div id="view-analysis" class="view">
+            <!-- Overview stats -->
+            <div class="card">
+                <div class="card-title">Performance Overview</div>
+                <div id="overview-stats" class="stats-grid"></div>
+            </div>
+
+            <!-- Insights -->
+            <div class="card">
+                <div class="card-title">Insights & Recommendations</div>
+                <div id="insights-list"></div>
+            </div>
+
+            <!-- Correlation charts -->
+            <div class="card">
+                <div class="card-title">Correlations</div>
+                <div class="chart-container">
+                    <div class="chart-title">Win Rate by Emotion</div>
+                    <canvas id="emotion-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Win Rate by Sleep</div>
+                    <canvas id="sleep-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Plan vs Rule-Break Performance</div>
+                    <canvas id="plan-chart"></canvas>
+                </div>
+                <div id="hr-correlation-chart-container" class="chart-container hidden">
+                    <div class="chart-title">Win Rate by Heart Rate Zone</div>
+                    <canvas id="hr-correlation-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== SETUP VIEW ==================== -->
+        <div id="view-setup" class="view">
+            <div class="card">
+                <div class="card-title">Apple Watch — Health Data Import</div>
+                <p style="color: var(--text-dim); font-size: 14px; margin-bottom: 20px;">
+                    Import your Apple Health data once a week. The system matches your heart rate, HRV, and sleep to your trading sessions automatically.
+                </p>
+
+                <div class="card-title" style="color: var(--accent)">How It Works</div>
+                <div class="setup-step">
+                    <div class="step-num">1</div>
+                    <div class="step-text">Trade all week using the journal. Log your sessions, trades, and emotions here.</div>
+                </div>
+                <div class="setup-step">
+                    <div class="step-num">2</div>
+                    <div class="step-text">On the weekend, open <strong>Health app</strong> on iPhone &rarr; tap your <strong>profile icon</strong> (top right) &rarr; <strong>Export All Health Data</strong> &rarr; AirDrop the zip to your Mac.</div>
+                </div>
+                <div class="setup-step">
+                    <div class="step-num">3</div>
+                    <div class="step-text">Upload the zip file below. The system reads your HR, HRV, and sleep data and matches it to your trading session timestamps.</div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="card-title" style="color: var(--accent)">Upload Health Export</div>
+                <div style="background: var(--bg); border: 2px dashed var(--border); border-radius: var(--radius); padding: 32px; text-align: center; margin-bottom: 16px; cursor: pointer; transition: border-color 0.2s" id="drop-zone" onclick="document.getElementById('health-file').click()">
+                    <div style="font-size: 32px; margin-bottom: 8px; color: var(--text-dim)">&#8682;</div>
+                    <div style="font-size: 14px; color: var(--text-dim)">Drop <strong>export.zip</strong> here or click to browse</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px">Accepts .zip or .xml</div>
+                    <input type="file" id="health-file" accept=".zip,.xml" style="display:none" onchange="uploadHealthExport(this.files[0])">
+                </div>
+                <div id="import-status" style="font-size: 13px; color: var(--text-dim)"></div>
+                <div id="import-result" class="hidden" style="margin-top: 12px"></div>
+
+                <div class="divider"></div>
+
+                <div class="card-title" style="color: var(--text-dim)">CLI Alternative</div>
+                <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 8px">
+                    You can also import from the terminal:
+                </p>
+                <code style="display:block; background: var(--bg); padding: 12px; border-radius: var(--radius-sm); font-size: 12px; color: var(--accent)">python3 health_import.py ~/Desktop/export.zip</code>
+
+                <div class="divider"></div>
+
+                <div class="card-title" style="color: var(--text-dim)">Pro Tip</div>
+                <p style="color: var(--text-dim); font-size: 13px;">
+                    Start an <strong>"Other" workout</strong> on your Apple Watch when you begin trading. This makes the watch record heart rate every 3-5 seconds instead of every 5 minutes — much more useful for detecting stress spikes during trades.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
