@@ -2,6 +2,8 @@
 
 **Trading session analytics with Apple Watch biometric correlation.**
 
+![Trading Journal](docs/trading-journal-card.png)
+
 A lightweight trading journal that goes beyond P&L tracking. Log sessions with pre-trade mood, caffeine intake, and sleep data, then correlate outcomes with Apple Watch biometrics (heart rate, HRV, sleep stages) to find what actually drives your best and worst trades.
 
 ## Features
